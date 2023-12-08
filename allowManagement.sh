@@ -127,7 +127,7 @@ else
 		invalidateToken
 		exit 0
 	else
-		echo "$mySerial - Unkown Error - code: $responseCode"
+		echo "$mySerial: Unkown Error - code: $responseCode"
 		invalidateToken
 		exit 99 # Unknown error occured
 	fi
