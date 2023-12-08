@@ -109,9 +109,6 @@ getJamfProCompID() {
 }
 
 ## Start Script
-
-xmlPayload="<computer><general><remote_management><managed>true</managed></remote_management></general></computer>"
-
 checkTokenExpiration
 getJamfProCompID
 checkTokenExpiration
@@ -121,7 +118,7 @@ if [[ $remoteManagement == "true" ]]; then
 	exit 0
 else
 	checkTokenExpiration
-	responseCode=$(curl -w "%{http_code}" -H "Content-Type: application/xml" -H "Accept: application/xml" -H "Authorization: Bearer ${access_token}" $jamfProURL/JSSResource/computers/id/$jamfProID -X PUT -d "$xmlPayload" -s -o /dev/null)
+	responseCode=$(curl -w "%{http_code}" -H "Content-Type: application/xml" -H "Accept: application/xml" -H "Authorization: Bearer ${access_token}" $jamfProURL/JSSResource/computers/id/$jamfProID -X PUT -d "<computer><general><remote_management><managed>true</managed></remote_management></general></computer>" -s -o /dev/null)
 	if [[ ${responseCode} == 201 ]]; then
 		echo "$mySerial: Remote Management Successfully Enabled"
 		invalidateToken
