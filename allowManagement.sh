@@ -35,13 +35,13 @@
 # Pro to perform management tasks" of the computer inventory record. 
 #
 # REQUIREMENTS:
-#           - Jamf Pro 10.49 or later
-#           - macOS Clients running version 11.xx or later (tested on macOS Sonoma)
+#		- Jamf Pro 10.49 or later
+#		- macOS Clients running version 11.xx or later (tested on macOS Sonoma)
 #
 # API PRIVILEGES:
-# 			- Update - Computers
-#			- Update - Users
-#			- Read - Computers
+#		- Update - Computers
+#		- Update - Users
+#		- Read - Computers
 # 
 # https://jamf.it/classic-api-privilege-requirements
 # https://jamf.it/jpro-api-privilege-requirements
