@@ -114,14 +114,21 @@ xmlPayload="<computer><general><remote_management><managed>true</managed></remot
 
 checkTokenExpiration
 getJamfProCompID
-
-responseCode=$(curl -w "%{http_code}" -H "Content-Type: application/xml" -H "Accept: application/xml" -H "Authorization: Bearer ${access_token}" $jamfProURL/JSSResource/computers/id/$jamfProID -X PUT -d "$xmlPayload" -s -o /dev/null)
-if [[ ${responseCode} == 201 ]]; then
-    echo "$mySerial: Remote Management Successfully Enabled"
-	invalidateToken
-    exit 0
+checkTokenExpiration
+remoteManagement=$(curl -s -H "Authorization: Bearer ${access_token}" $jamfProURL/JSSResource/computers/id/$jamfProID -X GET | xpath -e "//computer/general/remote_management/managed/text()")
+if [[ $remoteManagement == "true" ]]; then 
+	echo "$mySerial: Remote Managment Already Enabled."
+	exit 0
 else
-    echo "Unkown Error - code: $responseCode"
-	invalidateToken
-    exit 99 # Unknown error occured
+	checkTokenExpiration
+	responseCode=$(curl -w "%{http_code}" -H "Content-Type: application/xml" -H "Accept: application/xml" -H "Authorization: Bearer ${access_token}" $jamfProURL/JSSResource/computers/id/$jamfProID -X PUT -d "$xmlPayload" -s -o /dev/null)
+	if [[ ${responseCode} == 201 ]]; then
+		echo "$mySerial: Remote Management Successfully Enabled"
+		invalidateToken
+		exit 0
+	else
+		echo "Unkown Error - code: $responseCode"
+		invalidateToken
+		exit 99 # Unknown error occured
+	fi
 fi
