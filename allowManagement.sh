@@ -58,9 +58,9 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 ## User Variables
-jamfProURL="$4"
-jamfClientID="$5"
-jamfClientSecret="$6"
+jamfProURL="changeme"
+jamfClientID="changeme"
+jamfClientSecret="changeme"
 
 ## System Functions
 getAccessToken() {
