@@ -42,7 +42,6 @@
 #		- Update - Computers
 #		- Update - Users
 #		- Read - Computers
-#		- Read - Advanced Computer Searches
 # 
 # https://jamf.it/classic-api-privilege-requirements
 # https://jamf.it/jpro-api-privilege-requirements
@@ -54,6 +53,7 @@
 # Revision History
 # 2023-12-07: Initial release
 # 2023-12-08: Now leverages advanced computer search for locating unmanaged devices
+# 2023-12-11: Modified to work as Extension Attribute
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -61,7 +61,6 @@
 jamfProURL="$4"
 jamfClientID="$5"
 jamfClientSecret="$6"
-unmanagedDevices="1" # Jamf Pro ID for Advanced Computer Search showing unmanaged devices
 
 ## System Functions
 getAccessToken() {
@@ -98,44 +97,37 @@ invalidateToken() {
 	fi
 }
 
+getJamfProCompID() {
+    mySerial=$( system_profiler SPHardwareDataType | grep Serial |  awk '{print $NF}' )
+    osMajor=$(/usr/bin/sw_vers -productVersion | awk -F . '{print $1}')
+    if [[ "$osMajor" -ge 11 ]]; then
+	    checkTokenExpiration
+	    jamfProID=$(curl -k -H "Authorization: Bearer $access_token" $jamfProURL/JSSResource/computers/serialnumber/$mySerial/subset/general | xpath -e "//computer/general/id/text()")
+    else
+        #echo "Unsupported version of macOS. Exiting."
+		invalidateToken
+        exit 10 # Return an error code of 10 when version of macOS is unsupported.
+    fi
+}
+
 ## Start Script
 checkTokenExpiration
-osMajor=$(/usr/bin/sw_vers -productVersion | awk -F . '{print $1}')
-if [[ "$osMajor" -ge 11 ]]; then
+getJamfProCompID
+checkTokenExpiration
+remoteManagement=$(curl -s -H "Authorization: Bearer ${access_token}" $jamfProURL/JSSResource/computers/id/$jamfProID -X GET | xpath -e "//computer/general/remote_management/managed/text()")
+if [[ $remoteManagement == "true" ]]; then 
+	echo "<result>$mySerial: Remote Managment Already Enabled.</result>"
+	exit 0
+else
 	checkTokenExpiration
-	response=$(curl -s -k -H "Authorization: Bearer $access_token" $jamfProURL/JSSResource/advancedcomputersearches/id/$unmanagedDevices | xpath -e "//advanced_computer_search/computers/size/text()")
-	if [[ "$response" != "0" ]]; then
-		echo "Found $response computers in an unmanaged state...attempting to enable remote management..."
-		response=$(curl -s -k -H "Authorization: Bearer $access_token" $jamfProURL/JSSResource/advancedcomputersearches/id/$unmanagedDevices | xpath -e "//advanced_computer_search/computers/computer/id/text()")
-		jamfProIDs=()
-		while IFS= read -r line; do
-			jamfProIDs+=("$line")
-		done <<< "$response"
-		for id in "${jamfProIDs[@]}"; do
-			checkTokenExpiration
-			remoteManagement=$(curl -s -H "Authorization: Bearer ${access_token}" $jamfProURL/JSSResource/computers/id/$id -X GET | xpath -e "//computer/general/remote_management/managed/text()")
-			if [[ $remoteManagement == "true" ]]; then 
-				echo "id $id: Remote Managment Already Enabled."
-			else
-				checkTokenExpiration
-				responseCode=$(curl -w "%{http_code}" -H "Content-Type: application/xml" -H "Accept: application/xml" -H "Authorization: Bearer ${access_token}" $jamfProURL/JSSResource/computers/id/$id -X PUT -d "<computer><general><remote_management><managed>true</managed></remote_management></general></computer>" -s -o /dev/null)
-				if [[ ${responseCode} == 201 ]]; then
-					echo "id $id: Remote Management Successfully Enabled"
-				else
-					echo "id $id: Unkown Error - code: $responseCode"
-				fi
-			fi
-		done
-	else
-		echo "No results found in Advanced Computer Search - ID: $unmanagedDevices"
+	responseCode=$(curl -w "%{http_code}" -H "Content-Type: application/xml" -H "Accept: application/xml" -H "Authorization: Bearer ${access_token}" $jamfProURL/JSSResource/computers/id/$jamfProID -X PUT -d "<computer><general><remote_management><managed>true</managed></remote_management></general></computer>" -s -o /dev/null)
+	if [[ ${responseCode} == 201 ]]; then
+		echo "<result>$mySerial: Remote Management Successfully Enabled</result>"
 		invalidateToken
 		exit 0
+	else
+		echo "<result>$mySerial: Unkown Error - code: $responseCode</result>"
+		invalidateToken
+		exit 99 # Unknown error occured
 	fi
-else
-	echo "Unsupported version of macOS. Exiting."
-	invalidateToken
-	exit 10 # Return an error code of 10 when version of macOS is unsupported.
 fi
-
-invalidateToken
-exit 0
